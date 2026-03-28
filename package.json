@@ -1,0 +1,36 @@
+{
+  "name": "hexo-theme-cartoon",
+  "version": "1.0.0",
+  "description": "A geeky and cartoon-style Hexo theme with a built-in AI Page Agent.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-username/hexo-theme-cartoon.git"
+  },
+  "keywords": [
+    "hexo",
+    "hexo-theme",
+    "cartoon",
+    "geek",
+    "agent",
+    "llm",
+    "ai"
+  ],
+  "author": "AI Generated",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/your-username/hexo-theme-cartoon/issues"
+  },
+  "homepage": "https://github.com/your-username/hexo-theme-cartoon#readme",
+  "dependencies": {
+    "hexo-generator-searchdb": "^1.4.1",
+    "hexo-renderer-ejs": "^2.0.0",
+    "hexo-renderer-marked": "^6.0.0",
+    "hexo-renderer-stylus": "^3.0.0",
+    "hexo-blog-encrypt": "^3.1.5",
+    "hexo-generator-sitemap": "^3.0.1"
+  }
+}

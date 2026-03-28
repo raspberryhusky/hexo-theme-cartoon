@@ -42,19 +42,28 @@
 
 ## 📦 安装与使用
 
-### 1. 下载主题
+本主题支持两种安装方式：NPM 安装（推荐）或 Git Clone。
+
+### 方式一：NPM 安装 (推荐)
+如果作者已将本主题发布至 NPM 仓库，你可以在你的 Hexo 博客根目录下直接运行：
+```bash
+npm install hexo-theme-cartoon
+```
+
+### 方式二：Git Clone 安装
 在你的 Hexo 博客根目录下执行：
 ```bash
 git clone https://github.com/你的用户名/hexo-theme-cartoon.git themes/cartoon
 ```
 
-### 2. 启用主题
-修改 Hexo 根目录的 `_config.yml`：
+### 启用主题
+无论使用哪种安装方式，安装完成后，修改 Hexo **根目录**的 `_config.yml`：
 ```yaml
 theme: cartoon
 ```
 
-### 3. 安装必要的依赖插件
+### 安装必要的依赖插件
+*(注意：如果你使用的是 NPM 方式安装主题，大部分依赖会被自动安装，但仍建议检查)*
 本主题依赖以下 Hexo 插件以实现完整功能：
 ```bash
 npm install hexo-renderer-ejs hexo-renderer-stylus hexo-renderer-marked hexo-generator-searchdb hexo-blog-encrypt hexo-generator-sitemap --save
