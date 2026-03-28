@@ -1,6 +1,6 @@
 {
   "name": "hexo-theme-cartoon",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A geeky and cartoon-style Hexo theme with a built-in AI Page Agent.",
   "main": "index.js",
   "scripts": {
