@@ -1,0 +1,520 @@
+<footer class="cartoon-footer">
+  <div class="footer-box">
+    <p>&copy; <%= date(Date.now(), 'YYYY') %> <a href="<%- url_for('/') %>" class="author-link"><%= config.author %></a></p>
+    <p class="powered-by">Powered by <a href="https://hexo.io/" target="_blank">Hexo</a> & Cartoon Theme 🎨</p>
+  </div>
+</footer>
+
+<% if (theme.page_agent && theme.page_agent.enable) { %>
+  <!-- Page Agent Custom Cartoon UI -->
+  <div id="cartoon-agent-ui" class="cartoon-agent-box" style="display: none;">
+    <div class="agent-header">
+      <span class="agent-title">🤖 极客助手</span>
+      <div class="agent-actions">
+        <button class="agent-btn-small" id="agent-clear-btn" title="清除当前对话">🧹</button>
+        <button class="agent-close" id="agent-close-btn">✖</button>
+      </div>
+    </div>
+    
+    <div class="agent-chat-area" id="agent-history">
+      <!-- 初始为空，由 JS 根据缓存决定是否渲染欢迎语 -->
+    </div>
+    
+    <div class="agent-status-bar" id="agent-status">
+      <span class="status-indicator"></span>
+      <span class="status-text">就绪</span>
+    </div>
+
+    <div class="agent-input-area">
+      <input type="text" id="agent-input" placeholder="输入指令 (如: 点击关于页面)..." />
+      <button id="agent-submit" class="cartoon-btn">🚀 冲！</button>
+    </div>
+  </div>
+
+  <!-- 悬浮触发按钮 -->
+  <button id="agent-toggle-btn" class="cartoon-fab">💬</button>
+
+  <script src="<%- url_for('/js/page-agent-bundle.js') %>"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof window.PageAgentCore !== 'undefined' && typeof window.PageController !== 'undefined') {
+        
+        // 1. 初始化 Core 和 Controller
+        // 配置 controller 以开启遮罩，隐藏调试标签
+        const controller = new window.PageController({
+          enableMask: true
+        });
+        const core = new window.PageAgentCore({
+          pageController: controller,
+          model: '<%= theme.page_agent.model %>',
+          baseURL: '<%= theme.page_agent.base_url %>',
+          apiKey: '<%= theme.page_agent.api_key %>',
+          language: '<%= theme.page_agent.language %>'
+        });
+        
+        window.myAgentCore = core;
+
+        // 2. 绑定 UI 元素
+        const uiBox = document.getElementById('cartoon-agent-ui');
+        const toggleBtn = document.getElementById('agent-toggle-btn');
+        const closeBtn = document.getElementById('agent-close-btn');
+        const inputEl = document.getElementById('agent-input');
+        const submitBtn = document.getElementById('agent-submit');
+        const statusText = document.querySelector('#agent-status .status-text');
+        const statusIndicator = document.querySelector('#agent-status .status-indicator');
+        const historyContainer = document.getElementById('agent-history');
+
+        // ==== 处理跨页面状态保持与刷新检测 ====
+        // 使用 Performance API 检测本次加载是否为用户主动刷新页面
+        const isReload = performance.getEntriesByType('navigation').some(nav => nav.type === 'reload');
+        
+        if (isReload) {
+          // 如果是刷新页面，则清除之前的对话历史，重新开始
+          sessionStorage.removeItem('pageAgentHistory');
+          sessionStorage.removeItem('pageAgentActiveTask');
+        }
+        
+        // 从 sessionStorage 恢复历史任务队列和当前记录
+        const savedHistory = sessionStorage.getItem('pageAgentHistory');
+        const activeTask = sessionStorage.getItem('pageAgentActiveTask');
+        let isWaitingForInput = false; // 新增状态：标记是否处于 wait 状态
+        
+        if (savedHistory) {
+          try {
+            core.history = JSON.parse(savedHistory);
+            renderHistory(core.history);
+          } catch(e) {
+            console.error('Failed to restore history', e);
+            renderHistory([]);
+          }
+        } else {
+          renderHistory([]);
+        }
+        
+        // 恢复对话框状态
+        const isUiOpen = sessionStorage.getItem('pageAgentUiOpen') === 'true';
+        if (isUiOpen) {
+          uiBox.style.display = 'flex';
+        }
+
+        // 如果之前有一个活跃任务，并且跨页了，我们需要让它继续执行
+        if (activeTask) {
+           console.log("检测到跨页的活跃任务，正在继续执行:", activeTask);
+           // 稍微延迟一下，确保页面完全加载并且 UI 渲染完毕
+           setTimeout(async () => {
+             try {
+               // 告诉用户正在继续
+               statusText.textContent = '继续执行跨页任务...';
+               statusIndicator.className = 'status-indicator running';
+               
+               const result = await core.execute(activeTask);
+               handleExecuteResult(result);
+             } catch (e) {
+               console.error('Agent execution failed after navigation:', e);
+             } finally {
+               sessionStorage.removeItem('pageAgentActiveTask');
+             }
+           }, 1000);
+        }
+
+        // 提取出一个公共的结果处理函数
+        function handleExecuteResult(result) {
+            if (result) {
+               let finalMsg = '';
+               
+               if (typeof result === 'object') {
+                 if (result.data && typeof result.data === 'string') {
+                   finalMsg = result.data;
+                 } else if (result.text) {
+                   finalMsg = result.text;
+                 } else if (result.message) {
+                   finalMsg = result.message;
+                 } else {
+                   if (Array.isArray(result.history) && result.history.length > 0) {
+                     const lastStep = result.history.slice().reverse().find(i => i.type === 'step' && i.action && (i.action.type === 'done' || i.action.name === 'done'));
+                     if (lastStep) {
+                       const p = lastStep.action.params || lastStep.action.arguments || lastStep.action.input || lastStep.action;
+                       finalMsg = p.text || '';
+                     }
+                   }
+                   if (!finalMsg) {
+                     finalMsg = "任务已完成。";
+                   }
+                 }
+               } else if (typeof result === 'string') {
+                 finalMsg = result;
+               }
+               
+               if (finalMsg) {
+                 core.history.push({
+                   type: 'agent',
+                   content: finalMsg,
+                   isFinalResult: true
+                 });
+                 saveState();
+                 renderHistory(core.history);
+               }
+            }
+        }
+
+        // 保存状态的辅助函数
+        function saveState() {
+          sessionStorage.setItem('pageAgentHistory', JSON.stringify(core.history));
+        }
+        
+        // 页面即将卸载时保存最后的状态（以防中途跳转）
+        window.addEventListener('beforeunload', saveState);
+
+        // ==== UI 交互逻辑 ====
+        const clearBtn = document.getElementById('agent-clear-btn');
+        clearBtn.addEventListener('click', () => {
+          if (confirm('确定要清除当前的对话历史吗？')) {
+            sessionStorage.removeItem('pageAgentHistory');
+            sessionStorage.removeItem('pageAgentActiveTask');
+            core.history = [];
+            renderHistory([]);
+            statusText.textContent = '已清除历史';
+          }
+        });
+
+        toggleBtn.addEventListener('click', () => {
+          const isHidden = uiBox.style.display === 'none';
+          uiBox.style.display = isHidden ? 'flex' : 'none';
+          sessionStorage.setItem('pageAgentUiOpen', isHidden ? 'true' : 'false');
+          if (isHidden) inputEl.focus();
+        });
+        
+        closeBtn.addEventListener('click', () => {
+          uiBox.style.display = 'none';
+          sessionStorage.setItem('pageAgentUiOpen', 'false');
+        });
+
+        // 提交任务的逻辑
+        async function submitTask() {
+          const task = inputEl.value.trim();
+          if (!task) return;
+          
+          inputEl.value = '';
+          inputEl.disabled = true;
+          submitBtn.disabled = true;
+          submitBtn.textContent = '运行中...';
+          submitBtn.style.backgroundColor = 'var(--border-color)'; // 恢复运行中的颜色
+          
+          if (isWaitingForInput) {
+             // 追加当前任务对话（多轮对话）
+             core.history.push({ type: 'user', message: task });
+             renderHistory(core.history);
+             saveState();
+             isWaitingForInput = false;
+             statusText.textContent = '思考中... 🧠';
+             statusIndicator.className = 'status-indicator working';
+             
+             try {
+                // 关键：在 page-agent-core 中，向正在运行的任务追加上下文
+                // 实际上我们可以直接继续调用 execute() 或者传入追加 prompt
+                // 假设 core.execute 支持延续，或者我们需要重新带上历史记录执行
+                const result = await core.execute(task);
+                console.log("--- Execute Continue Result ---", result);
+             } catch (error) {
+                console.error('Agent execution error:', error);
+                core.history.push({ type: 'error', message: `[执行出错] ${error.message}` });
+                renderHistory(core.history);
+                statusText.textContent = '执行出错 🛑';
+                statusIndicator.className = 'status-indicator error';
+             }
+             
+             sessionStorage.removeItem('pageAgentActiveTask');
+             inputEl.disabled = false;
+             submitBtn.disabled = false;
+             submitBtn.textContent = '🚀 Send';
+             submitBtn.style.backgroundColor = 'var(--primary)';
+             inputEl.placeholder = "让助手帮你找文章或翻页...";
+             
+             if (controller && typeof controller.clear === 'function') {
+               controller.clear();
+             }
+          } else {
+             // 开启一个全新任务
+             sessionStorage.setItem('pageAgentActiveTask', task);
+             core.history.push({ type: 'user', message: task });
+             renderHistory(core.history);
+             
+             statusText.textContent = '正在执行任务... 🏃‍♂️';
+             statusIndicator.className = 'status-indicator working';
+             saveState();
+
+             try {
+               const result = await core.execute(task);
+               console.log("--- Execute Result ---", result);
+               
+               if (result.success) {
+                 core.history.push({ type: 'ai', message: '任务执行完毕！' });
+                 statusText.textContent = '待命中 🟢';
+                 statusIndicator.className = 'status-indicator ready';
+               } else {
+                 core.history.push({ type: 'error', message: `[执行失败] ${result.data || '未知错误'}` });
+                 statusText.textContent = '执行失败 🛑';
+                 statusIndicator.className = 'status-indicator error';
+               }
+             } catch (error) {
+               console.error('Agent execution error:', error);
+               core.history.push({ type: 'error', message: `[执行出错] ${error.message}` });
+               statusText.textContent = '执行出错 🛑';
+               statusIndicator.className = 'status-indicator error';
+             }
+             
+             if (!isWaitingForInput) {
+               sessionStorage.removeItem('pageAgentActiveTask');
+               inputEl.disabled = false;
+               submitBtn.disabled = false;
+               submitBtn.textContent = '🚀 Send';
+               submitBtn.style.backgroundColor = 'var(--primary)';
+               saveState();
+               renderHistory(core.history);
+               
+               if (controller && typeof controller.clear === 'function') {
+                 controller.clear();
+               }
+             }
+          }
+        }
+
+        submitBtn.addEventListener('click', submitTask);
+        inputEl.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') submitTask();
+        });
+
+        // ==== 键盘事件监听 (Esc 终止任务) ====
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+             // 如果有活跃任务或核心正在运行，中止它
+             if (sessionStorage.getItem('pageAgentActiveTask')) {
+               console.log('User aborted the task via Escape key.');
+               // page-agent-core 提供了 dispose() 或 abort() 来中止任务
+               if (typeof core.dispose === 'function') {
+                 core.dispose();
+               } else if (typeof core.stop === 'function') {
+                 core.stop();
+               }
+               
+               // 强制清理状态
+               sessionStorage.removeItem('pageAgentActiveTask');
+               statusText.textContent = '任务已中止 🛑';
+               statusIndicator.className = 'status-indicator error';
+               
+               // 手动追加中止消息到历史
+               core.history.push({
+                 type: 'error',
+                 message: '用户手动中止了任务。'
+               });
+               saveState();
+               renderHistory(core.history);
+               
+               // 如果有 controller，尝试清除高亮和遮罩
+               if (controller && typeof controller.clear === 'function') {
+                 controller.clear();
+               }
+             }
+          }
+        });
+
+        // ==== 事件监听与渲染 ====
+        core.addEventListener('action', (e) => {
+          const action = e.detail || e;
+          console.log('Action:', action);
+          let actionText = '';
+          if (action.action === 'wait') {
+             actionText = `等待用户输入...`;
+             isWaitingForInput = true;
+             
+             // 关键修复：当 Agent 进入 wait 状态时，清除遮罩，恢复输入框
+             if (controller && typeof controller.clear === 'function') {
+               controller.clear();
+             }
+             submitBtn.disabled = false;
+             submitBtn.textContent = '继续发送';
+             submitBtn.style.backgroundColor = '#FF9800'; // 变个颜色提示是追加对话
+             inputEl.disabled = false;
+             inputEl.focus();
+             inputEl.placeholder = "请回复助手以继续任务...";
+             statusText.textContent = '等待回复... ⏳';
+             statusIndicator.className = 'status-indicator warning';
+          } else if (action.action === 'click') {
+             actionText = `点击了元素 (ref: ${action.ref})`;
+          } else if (action.action === 'type') {
+             actionText = `输入了文本: "${action.text}"`;
+          } else if (action.action === 'scroll') {
+             actionText = `滚动页面 (${action.direction})`;
+          } else {
+             actionText = `执行动作: ${action.action}`;
+          }
+          core.history.push({ type: 'action', message: actionText });
+          saveState();
+          renderHistory(core.history);
+        });
+
+        core.addEventListener('statuschange', (e) => {
+          const status = e.detail;
+          if (status === 'running') {
+            statusText.textContent = '思考中...';
+            statusIndicator.className = 'status-indicator running';
+          } else if (status === 'completed') {
+            statusText.textContent = '完成！';
+            statusIndicator.className = 'status-indicator completed';
+            saveState(); // 任务完成时保存
+          } else if (status === 'error') {
+            statusText.textContent = '出错了 😢';
+            statusIndicator.className = 'status-indicator error';
+            saveState();
+          } else {
+            statusText.textContent = '就绪';
+            statusIndicator.className = 'status-indicator';
+          }
+        });
+
+        core.addEventListener('activity', (e) => {
+          const activity = e.detail;
+          if (activity.type === 'executing' && activity.action) {
+             statusText.textContent = `执行: ${activity.action}`;
+             saveState(); // 每次动作前保存，防止动作导致页面跳转
+          } else if (activity.type === 'thinking') {
+             statusText.textContent = '分析页面中...';
+          }
+        });
+
+        core.addEventListener('historychange', () => {
+          saveState();
+          renderHistory(core.history);
+        });
+
+        // 统一的渲染函数
+        function renderHistory(history) {
+          historyContainer.innerHTML = '';
+          
+          if (!history || history.length === 0) {
+            historyContainer.innerHTML = '<div class="agent-message ai-message">嗨！我是极客安全实验室的 AI 助手。有什么我可以帮你的吗？</div>';
+            return;
+          }
+
+          history.forEach(item => {
+            const msgEl = document.createElement('div');
+            
+            // console.log('History item:', item);
+
+            if (item.type === 'user') {
+              msgEl.className = 'agent-message user-message';
+              msgEl.textContent = item.content || item.message;
+            } else if (item.type === 'observation') {
+              msgEl.className = 'agent-message ai-message';
+              msgEl.style.opacity = '0.7';
+              msgEl.style.fontSize = '0.85rem';
+              msgEl.innerHTML = `👀 观察: ${item.content}`;
+            } else if (item.type === 'step') {
+              msgEl.className = 'agent-message ai-message';
+              let html = '';
+
+              if (item.reflection) {
+                if (item.reflection.memory) {
+                  html += `<div style="margin-bottom: 5px; color: #555;">🧠 记忆: ${item.reflection.memory}</div>`;
+                }
+                if (item.reflection.next_goal) {
+                  html += `<div style="margin-bottom: 5px; color: #555;">🎯 目标: ${item.reflection.next_goal}</div>`;
+                }
+              }
+
+              if (item.action) {
+                const actionType = item.action.type || item.action.name;
+                
+                // 深度兼容各种大模型返回的参数格式
+                let params = {};
+                const rawParams = item.action.params || item.action.arguments || item.action;
+                
+                if (typeof rawParams === 'string') {
+                  try {
+                    params = JSON.parse(rawParams);
+                  } catch(e) {
+                    params = { text: rawParams };
+                  }
+                } else if (typeof rawParams === 'object') {
+                  params = rawParams;
+                }
+                
+                if (actionType === 'done') {
+                  // 针对 done 动作提取文本
+                  const finalText = params.text || params.message || params.content || '';
+                  if (finalText) {
+                    html += `<div style="margin-top: 10px; font-weight: bold; font-size: 1.05rem; color: var(--text-color);">🎉 回答: <br/>${finalText.replace(/\n/g, '<br>')}</div>`;
+                  }
+                } else if (actionType) {
+                  let actionDesc = `[执行动作: ${actionType}]`;
+                  if (params.text) actionDesc += ` 内容: ${params.text}`;
+                  html += `<div style="font-size:0.85rem; color: var(--primary); margin-top: 5px; border-top: 1px dashed var(--border-color); padding-top: 5px;">🚀 ${actionDesc}</div>`;
+                }
+              }
+
+              // 3. 处理顶层的 result/content (Task completed 时的最终输出)
+              // 根据控制台日志，page-agent 可能会在 step 执行完毕后，把最终的结果直接挂载在 item 的某个顶层字段上
+              if (item.result) {
+                 html += `<div style="margin-top: 10px; font-weight: bold; font-size: 1.05rem; color: var(--text-color);">🎉 最终回答: <br/>${String(item.result).replace(/\n/g, '<br>')}</div>`;
+              } else if (item.content && typeof item.content === 'string' && !item.action) {
+                 // 如果有 content 且没有 action，通常这就是直接的回答
+                 html += `<div style="margin-top: 10px; font-weight: bold; font-size: 1.05rem; color: var(--text-color);">🎉 回答: <br/>${item.content.replace(/\n/g, '<br>')}</div>`;
+              }
+              
+              // 4. 处理 tool 执行结果
+              if (item.tool_result || item.observation) {
+                 const obsText = item.tool_result || item.observation;
+                 // 避免重复渲染 observation，因为上面已经有专门的 observation type 处理，但有的版本可能塞在 step 里
+                 if (typeof obsText === 'string' && !obsText.includes('Page navigated to')) {
+                    html += `<div style="font-size:0.85rem; opacity:0.8; margin-top:5px;">[工具返回]: ${obsText.substring(0, 100)}...</div>`;
+                 }
+              }
+
+              // 5. 如果是错误信息
+              if (item.error) {
+                // 如果 error 也是一个复杂的对象或者字符串，做个安全处理
+                const errMsg = typeof item.error === 'string' ? item.error : JSON.stringify(item.error);
+                html += `<div style="color: #FF5252; margin-top: 5px;">❌ 错误: ${errMsg}</div>`;
+              }
+
+              if (!html.trim()) return; 
+              msgEl.innerHTML = html;
+            } else if (item.type === 'agent' || item.type === 'assistant') {
+              msgEl.className = 'agent-message ai-message';
+              let text = item.content || item.message || item.text || '';
+              if (typeof text === 'object') {
+                try { text = JSON.stringify(text); } catch(e) {}
+              }
+              
+              let htmlContent = typeof text === 'string' ? text.replace(/\n/g, '<br>') : String(text);
+              if (item.isFinalResult) {
+                 htmlContent = `<div style="margin-top: 5px; font-weight: bold; font-size: 1.05rem; color: var(--text-color);">🎉 最终回答: <br/>${htmlContent}</div>`;
+              }
+              msgEl.innerHTML = htmlContent;
+            } else if (item.type === 'error') {
+              // page-agent 内部经常会有重试错误，比如 Tool arguments validation failed
+              // 这些通常是它在自我纠正，不用全部展示给用户看，除非是最后真正的失败
+              const errMsg = item.message || item.content || '执行失败';
+              if (!errMsg.includes('validation failed') && !errMsg.includes('No tool_call')) {
+                msgEl.className = 'agent-message ai-message';
+                msgEl.style.color = '#FF5252';
+                msgEl.textContent = `[错误] ${errMsg}`;
+              } else {
+                return; // 忽略这些内部校验错误，不渲染这个节点
+              }
+            }
+            
+            if (msgEl.textContent || msgEl.innerHTML) {
+              historyContainer.appendChild(msgEl);
+            }
+          });
+          
+          historyContainer.scrollTop = historyContainer.scrollHeight;
+        }
+
+      } else {
+        console.warn('PageAgentCore or PageController failed to load.');
+      }
+    });
+  </script>
+<% } %>

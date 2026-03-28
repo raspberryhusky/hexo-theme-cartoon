@@ -1,0 +1,24 @@
+<div class="archive-container cartoon-box">
+  <h1 class="archive-title">📦 Archives</h1>
+  <ul class="archive-list">
+    <% page.posts.each(function(post) { %>
+      <li class="archive-item cartoon-box">
+        <time datetime="<%= date_xml(post.date) %>"><%= date(post.date, 'MM-DD') %></time>
+        <a href="<%- url_for(post.path) %>">
+          <% if (post.password || post.encrypt) { %>
+            🔒 <%= post.title %>
+          <% } else { %>
+            <%= post.title %>
+          <% } %>
+        </a>
+      </li>
+    <% }) %>
+  </ul>
+</div>
+
+<div class="pagination cartoon-pagination">
+  <%- paginator({
+    prev_text: '👈 Prev',
+    next_text: 'Next 👉'
+  }) %>
+</div>

@@ -1,0 +1,15 @@
+<article class="single-post cartoon-box">
+  <div class="post-header">
+    <h1 class="post-title">
+      <% if (page.password || page.encrypt) { %>🔒 <% } %><%= page.title || 'Untitled' %>
+    </h1>
+  </div>
+  
+  <div class="post-content cartoon-content">
+    <%- page.content %>
+  </div>
+  
+  <div class="post-footer">
+    <a href="<%- url_for('/') %>" class="back-btn">🏠 Back to Home</a>
+  </div>
+</article>

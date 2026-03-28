@@ -1,0 +1,34 @@
+<article class="single-post cartoon-box">
+  <div class="post-header">
+    <h1 class="post-title">
+      <% if (page.password || page.encrypt) { %>🔒 <% } %><%= page.title || 'Untitled' %>
+    </h1>
+    <div class="post-meta">
+      <time datetime="<%= date_xml(page.date) %>">📅 <%= date(page.date, 'YYYY-MM-DD') %></time>
+      <% if (page.categories && page.categories.length) { %>
+        <span class="post-categories">
+          📁 
+          <% page.categories.each(function(cat) { %>
+            <a href="<%- url_for(cat.path) %>" class="category-link"><%= cat.name %></a>
+          <% }) %>
+        </span>
+      <% } %>
+      <% if (page.tags && page.tags.length) { %>
+        <span class="post-tags">
+          🏷️ 
+          <% page.tags.each(function(tag) { %>
+            <a href="<%- url_for(tag.path) %>" class="tag-link">#<%= tag.name %></a>
+          <% }) %>
+        </span>
+      <% } %>
+    </div>
+  </div>
+  
+  <div class="post-content cartoon-content">
+    <%- page.content %>
+  </div>
+  
+  <div class="post-footer">
+    <a href="<%- url_for('/') %>" class="back-btn">🏠 Back to Home</a>
+  </div>
+</article>

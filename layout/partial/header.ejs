@@ -1,0 +1,65 @@
+<header class="cartoon-header">
+  <div class="logo-box">
+    <% if (theme.logos && theme.logos.length > 0) { %>
+      <a href="<%- url_for('/') %>" class="logo-link">
+        <img id="random-logo" src="<%- url_for(theme.logos[0]) %>" alt="<%= config.title %>" class="logo-img" style="display: none;">
+        <!-- 默认文字作为后备和加载时的占位 -->
+        <span id="logo-fallback" class="logo-text" style="font-size: 1.5rem;"><%= config.title %></span>
+      </a>
+      <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          var logosString = '<%- JSON.stringify(theme.logos) %>';
+          var baseUrl = '<%- url_for("/") %>';
+          var logos = JSON.parse(logosString).map(function(l) { 
+            return baseUrl + l.replace(/^\//, ''); 
+          });
+          var randomLogo = logos[Math.floor(Math.random() * logos.length)];
+          var imgElement = document.getElementById('random-logo');
+          var fallbackElement = document.getElementById('logo-fallback');
+          
+          if (imgElement && fallbackElement) {
+            imgElement.src = randomLogo;
+            imgElement.onload = function() {
+              imgElement.style.display = 'block';
+              fallbackElement.style.display = 'none';
+            };
+          }
+        });
+      </script>
+    <% } else if (theme.logo) { %>
+      <a href="<%- url_for('/') %>" class="logo-link">
+        <img src="<%- url_for(theme.logo) %>" alt="<%= config.title %>" class="logo-img">
+      </a>
+    <% } else { %>
+      <h1><a href="<%- url_for('/') %>" class="logo-text"><%= config.title %></a></h1>
+    <% } %>
+    <div class="cloud cloud-1"></div>
+    <div class="cloud cloud-2"></div>
+  </div>
+  <nav class="cartoon-nav">
+    <ul>
+      <% for (let i in theme.menu){ %>
+        <li><a href="<%- url_for(theme.menu[i]) %>" class="nav-btn"><%= i %></a></li>
+      <% } %>
+      <li><a href="javascript:;" class="nav-btn" id="search-btn">🔍 Search</a></li>
+    </ul>
+  </nav>
+</header>
+
+<!-- Search Modal -->
+<div id="search-modal" class="search-modal" style="display: none;">
+  <div class="search-modal-content cartoon-box">
+    <div class="search-header">
+      <h2 class="search-title">🔍 搜索文章</h2>
+      <button class="search-close" id="search-close-btn">✖</button>
+    </div>
+    <div class="search-input-wrapper">
+      <input type="text" id="search-input" class="cartoon-input" placeholder="输入关键词搜索..." autocomplete="off">
+    </div>
+    <div id="search-results" class="search-results">
+      <!-- 搜索结果将在这里显示 -->
+    </div>
+  </div>
+</div>
+
+<script src="<%- url_for('/js/search.js') %>"></script>

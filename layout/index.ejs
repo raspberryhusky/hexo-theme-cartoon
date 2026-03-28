@@ -1,0 +1,91 @@
+<div class="sort-control cartoon-box" style="margin-bottom: 20px; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center;">
+  <span style="font-weight: bold; font-size: 1.1rem;">📝 文章列表</span>
+  <div>
+    <button id="sort-desc-btn" class="cartoon-btn sort-btn active" style="padding: 5px 15px; font-size: 0.9rem; margin-right: 10px;">🆕 最新发布</button>
+    <button id="sort-asc-btn" class="cartoon-btn sort-btn" style="padding: 5px 15px; font-size: 0.9rem;">⏳ 最早发布</button>
+  </div>
+</div>
+
+<div id="post-list" class="posts-list">
+  <% page.posts.each(function(post){ %>
+    <article class="post-card cartoon-box" data-date="<%= post.date.valueOf() %>">
+      <h2 class="post-title">
+        <a href="<%- url_for(post.path) %>">
+          <% if (post.password || post.encrypt) { %>
+            🔒 <%= post.title %>
+          <% } else { %>
+            <%= post.title %>
+          <% } %>
+        </a>
+      </h2>
+      <div class="post-meta">
+        <span class="post-date">📅 <%= date(post.date, 'YYYY-MM-DD') %></span>
+      </div>
+      <div class="post-excerpt">
+        <% if (post.password || post.encrypt) { %>
+          <p>🔒 呀！这是一篇机密文章，被博主上锁了。点击“Read More”进入详情页输入密码解锁吧！</p>
+        <% } else if (post.excerpt) { %>
+          <%- post.excerpt %>
+        <% } else { %>
+          <%- strip_html(post.content).substring(0, 150) %>...
+        <% } %>
+      </div>
+      <a href="<%- url_for(post.path) %>" class="read-more-btn">
+        <% if (post.password || post.encrypt) { %>
+          去解锁 🔑
+        <% } else { %>
+          Read More! 🚀
+        <% } %>
+      </a>
+    </article>
+  <% }) %>
+</div>
+
+<div class="pagination cartoon-pagination">
+  <%- paginator({
+    prev_text: '👈 Prev',
+    next_text: 'Next 👉'
+  }) %>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const postList = document.getElementById('post-list');
+    const posts = Array.from(postList.getElementsByClassName('post-card'));
+    const descBtn = document.getElementById('sort-desc-btn');
+    const ascBtn = document.getElementById('sort-asc-btn');
+
+    // 默认保存原始的倒序 DOM 结构
+    const originalOrder = [...posts];
+    
+    // 正序：按时间戳升序
+    const reversedOrder = [...posts].sort((a, b) => {
+      return parseInt(a.getAttribute('data-date')) - parseInt(b.getAttribute('data-date'));
+    });
+
+    function renderPosts(orderedPosts, activeBtn, inactiveBtn) {
+      // 清空当前列表
+      postList.innerHTML = '';
+      // 重新插入
+      orderedPosts.forEach(post => postList.appendChild(post));
+      
+      // 更新按钮状态
+      activeBtn.classList.add('active');
+      activeBtn.style.backgroundColor = 'var(--primary)';
+      activeBtn.style.color = 'var(--white)';
+      
+      inactiveBtn.classList.remove('active');
+      inactiveBtn.style.backgroundColor = 'var(--white)';
+      inactiveBtn.style.color = 'var(--text-color)';
+    }
+
+    // 初始化按钮样式
+    descBtn.style.backgroundColor = 'var(--primary)';
+    descBtn.style.color = 'var(--white)';
+    ascBtn.style.backgroundColor = 'var(--white)';
+    ascBtn.style.color = 'var(--text-color)';
+
+    descBtn.addEventListener('click', () => renderPosts(originalOrder, descBtn, ascBtn));
+    ascBtn.addEventListener('click', () => renderPosts(reversedOrder, ascBtn, descBtn));
+  });
+</script>

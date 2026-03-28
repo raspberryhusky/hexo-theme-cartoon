@@ -1,0 +1,25 @@
+# Cartoon Theme Configuration
+menu:
+  🏠 Home: /
+  📚 Archives: /archives
+  👨‍💻 About: /about/
+
+# Logos (Randomly displayed)
+logos:
+  - /images/logo.png
+  - /images/logo2.png
+  - /images/logo3.png
+
+# 智能网页助手配置
+page_agent:
+  enable: true
+  api_key: "dummy_key_not_needed_for_proxy" # 【隐私说明】请勿在此处直接填写真实的 API Key，建议使用下方的 base_url 配合 Serverless 进行请求中转，以保护你的 Key 不被泄露。
+  base_url: "https://your-proxy-domain.workers.dev/v1" # 【用户配置】这里填入你部署好的代理接口地址（如 Cloudflare Worker 地址）
+  model: "minimax-m2.7" # 使用的模型名称
+  language: "zh-CN"
+
+# Colors
+primary_color: "#FF6B6B"
+secondary_color: "#4ECDC4"
+background_color: "#FFF3E0"
+text_color: "#2C3E50"
