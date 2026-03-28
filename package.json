@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-username/hexo-theme-cartoon.git"
+    "url": "git+https://github.com/raspberryhusky/hexo-theme-cartoon.git"
   },
   "keywords": [
     "hexo",
@@ -19,12 +19,12 @@
     "llm",
     "ai"
   ],
-  "author": "AI Generated",
+  "author": "raspberryhusky",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/your-username/hexo-theme-cartoon/issues"
+    "url": "https://github.com/raspberryhusky/hexo-theme-cartoon/issues"
   },
-  "homepage": "https://github.com/your-username/hexo-theme-cartoon#readme",
+  "homepage": "https://github.com/raspberryhusky/hexo-theme-cartoon#readme",
   "dependencies": {
     "hexo-generator-searchdb": "^1.4.1",
     "hexo-renderer-ejs": "^2.0.0",

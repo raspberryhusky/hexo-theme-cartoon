@@ -53,7 +53,7 @@ npm install hexo-theme-cartoon
 ### 方式二：Git Clone 安装
 在你的 Hexo 博客根目录下执行：
 ```bash
-git clone https://github.com/你的用户名/hexo-theme-cartoon.git themes/cartoon
+git clone https://github.com/raspberryhusky/hexo-theme-cartoon.git themes/cartoon
 ```
 
 ### 启用主题
